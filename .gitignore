@@ -17,3 +17,5 @@ test-results/
 *.png
 !web/**/*.png
 ms-playwright/
+Endlogs-Windows.zip
+*.zip
