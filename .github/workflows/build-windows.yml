@@ -1,0 +1,50 @@
+name: build-windows
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install and build
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\Activate.ps1
+          python -m pip install -U pip
+          pip install -r requirements.txt -r requirements-build.txt
+          python -m playwright install chromium
+          python -m PyInstaller --noconfirm --clean endlogs.spec
+          Copy-Item USER_GUIDE.txt dist\Endlogs\使用说明.txt
+          if (Test-Path "$env:LOCALAPPDATA\ms-playwright") {
+            Copy-Item -Recurse "$env:LOCALAPPDATA\ms-playwright" dist\Endlogs\ms-playwright
+            Set-Content -Encoding ASCII dist\Endlogs\一键启动.bat "@echo off`r`nset PLAYWRIGHT_BROWSERS_PATH=%~dp0ms-playwright`r`nstart `"`" `"%~dp0Endlogs.exe`"`r`n"
+          }
+
+      - name: Zip artifact
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\Endlogs\* -DestinationPath Endlogs-Windows.zip -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Endlogs-Windows
+          path: Endlogs-Windows.zip
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Endlogs-Windows.zip
+          generate_release_notes: true

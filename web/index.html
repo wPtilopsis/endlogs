@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>终末地 · 资源日志助手</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css?v=6" />
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+  <main class="shell">
+    <header class="hero">
+      <p class="brand">ENDLOGS</p>
+      <h1>终末地资源日志</h1>
+      <p class="lede">登录客服中心，按日期汇总源石与嵌晶玉的获取、消耗与原因分布。</p>
+    </header>
+
+    <section class="panel auth-panel">
+      <div class="panel-head">
+        <h2>账号</h2>
+        <span id="authBadge" class="badge">未登录</span>
+      </div>
+      <p id="authMessage" class="muted">通过浏览器登录后，程序会自动捕获 token 与角色信息。</p>
+      <div id="profileCard" class="profile-card hidden" aria-live="polite">
+        <div><span class="profile-label">昵称</span><strong id="profileName">-</strong></div>
+        <div><span class="profile-label">UID</span><strong id="profileUid">-</strong></div>
+        <div><span class="profile-label">渠道</span><strong id="profileChannel">-</strong></div>
+        <div><span class="profile-label">区服</span><strong id="profileServer">-</strong></div>
+        <div><span class="profile-label">等级</span><strong id="profileLevel">-</strong></div>
+      </div>
+      <div class="actions">
+        <button id="btnLogin" type="button" class="btn primary">浏览器登录</button>
+        <button id="btnRefreshProfile" type="button" class="btn ghost">刷新角色信息</button>
+        <button id="btnLogout" type="button" class="btn ghost">退出</button>
+        <button id="btnToggleManual" type="button" class="btn text">手动粘贴 token</button>
+      </div>
+      <form id="manualForm" class="manual-form hidden">
+        <label>x-account-token<input id="accountToken" autocomplete="off" /></label>
+        <label>x-role-token<textarea id="roleToken" rows="3" autocomplete="off"></textarea></label>
+        <label>x-role-server-id<input id="serverId" value="1" autocomplete="off" /></label>
+        <label>binding token（可选，binding_list 的 token 参数）
+          <textarea id="bindingToken" rows="3" autocomplete="off"></textarea>
+        </label>
+        <button type="submit" class="btn primary">保存 token</button>
+      </form>
+    </section>
+
+    <section class="panel query-panel">
+      <div class="panel-head">
+        <h2>查询</h2>
+      </div>
+      <form id="queryForm" class="query-form">
+        <label>开始日期
+          <div class="date-field">
+            <input type="date" id="startDate" required />
+            <span id="startDateText" class="date-text"></span>
+          </div>
+        </label>
+        <label>结束日期
+          <div class="date-field">
+            <input type="date" id="endDate" required />
+            <span id="endDateText" class="date-text"></span>
+          </div>
+        </label>
+        <fieldset>
+          <legend>资源</legend>
+          <label class="check"><input type="checkbox" name="currency" value="1" checked />源石</label>
+          <label class="check"><input type="checkbox" name="currency" value="2" checked />嵌晶玉</label>
+        </fieldset>
+        <label>变动类型
+          <select id="changeType">
+            <option value="0">全部</option>
+            <option value="1">获取</option>
+            <option value="2">消耗</option>
+          </select>
+        </label>
+        <div class="query-actions">
+          <button type="submit" class="btn primary" id="btnQuery">开始查询</button>
+          <button type="button" class="btn ghost" id="btnReport" disabled>生成汇总报告</button>
+        </div>
+      </form>
+      <p id="queryStatus" class="muted" aria-live="polite"></p>
+    </section>
+
+    <section id="results" class="results hidden"></section>
+  </main>
+
+  <div id="reportModal" class="report-modal hidden" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
+    <div class="report-modal-backdrop" data-close-report></div>
+    <div class="report-modal-panel">
+      <div class="report-modal-head">
+        <h2 id="reportModalTitle">汇总报告预览</h2>
+        <button type="button" class="btn text" data-close-report>关闭</button>
+      </div>
+      <div class="report-modal-body">
+        <img id="reportPreview" alt="汇总报告预览" />
+      </div>
+      <div class="report-modal-actions">
+        <button type="button" class="btn ghost" data-close-report>取消</button>
+        <button type="button" class="btn primary" id="btnSaveReport">确认保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=6"></script>
+</body>
+</html>
