@@ -11,11 +11,43 @@ import time
 import webbrowser
 from pathlib import Path
 
+
+def _configure_stdio() -> None:
+    """避免 Windows 控制台默认编码无法打印中文而崩溃。"""
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+            ctypes.windll.kernel32.SetConsoleCP(65001)
+        except Exception:
+            pass
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is None:
+            continue
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
+_configure_stdio()
+
 ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from config import DATA_DIR, HOST, PORT, app_base_dir  # noqa: E402
+
+
+def say(message: str = "") -> None:
+    try:
+        print(message)
+    except UnicodeEncodeError:
+        encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+        print(message.encode(encoding, errors="replace").decode(encoding, errors="replace"))
 
 
 def _setup_playwright_browsers() -> None:
@@ -53,8 +85,8 @@ def _run_server() -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="终末地资源日志助手启动器")
-    parser.add_argument("--no-browser", action="store_true", help="不自动打开浏览器")
+    parser = argparse.ArgumentParser(description="ENDLOGS launcher")
+    parser.add_argument("--no-browser", action="store_true", help="Do not open browser")
     parser.add_argument("--host", default=HOST)
     parser.add_argument("--port", type=int, default=PORT)
     args = parser.parse_args()
@@ -66,39 +98,43 @@ def main() -> int:
     port = args.port
     url = f"http://{host}:{port}"
 
-    print("=" * 48)
-    print("  终末地资源日志助手  ENDLOGS")
-    print("=" * 48)
-    print(f"本地地址: {url}")
-    print("请保持本窗口开启；关闭窗口即停止服务。")
-    print()
+    say("=" * 48)
+    say("  ENDLOGS  (Endfield Resource Logs)")
+    say("=" * 48)
+    say(f"URL: {url}")
+    say("Keep this window open. Closing it stops the server.")
+    say("")
 
     already = _port_open(host, port)
     if already:
-        print(f"检测到 {port} 端口已有服务在运行，直接打开页面。")
+        say(f"Port {port} is already in use. Opening the page...")
         if not args.no_browser:
             webbrowser.open(url)
-        print("若页面异常，请先关闭旧进程后重新启动。")
-        input("按回车键退出本启动器（不会关闭已有服务）...")
+        say("If the page looks wrong, close the old Endlogs window and retry.")
+        try:
+            input("Press Enter to exit this launcher (existing server keeps running)...")
+        except EOFError:
+            pass
         return 0
 
     thread = threading.Thread(target=_run_server, daemon=True)
     thread.start()
 
     if not _wait_ready(host, port):
-        print("启动超时：服务未能在限定时间内就绪。")
+        say("Startup timeout: server did not become ready.")
         return 1
 
-    print("服务已启动。")
+    say("Server started.")
     if not args.no_browser:
         webbrowser.open(url)
-        print("已尝试打开浏览器。若未打开，请手动访问上面的地址。")
+        say("Browser open attempted. If not, visit the URL above.")
 
     try:
         while thread.is_alive():
             time.sleep(0.5)
     except KeyboardInterrupt:
-        print("\n正在退出…")
+        say("")
+        say("Exiting...")
     return 0
 
 
