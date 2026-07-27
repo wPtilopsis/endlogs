@@ -144,6 +144,26 @@ async def _sync_binding_profile(page, captured: dict[str, str], profile: RolePro
     return result
 
 
+async def _launch_chromium(playwright: Any) -> Any:
+    """优先用本机 Edge/Chrome，避免依赖数百 MB 的 Playwright Chromium。"""
+    last_error: Exception | None = None
+    for channel in ("msedge", "chrome"):
+        try:
+            return await playwright.chromium.launch(headless=False, channel=channel)
+        except Exception as exc:  # noqa: BLE001
+            last_error = exc
+    try:
+        return await playwright.chromium.launch(headless=False)
+    except Exception as exc:  # noqa: BLE001
+        hint = (
+            "未找到可用浏览器。请安装 Microsoft Edge / Google Chrome，"
+            "或执行：python -m playwright install chromium --no-shell"
+        )
+        if last_error is not None:
+            raise RuntimeError(f"{hint}（系统浏览器：{last_error}；Chromium：{exc}）") from exc
+        raise RuntimeError(f"{hint}（{exc}）") from exc
+
+
 async def _capture_tokens(timeout_s: int) -> None:
     from playwright.async_api import async_playwright
 
@@ -203,7 +223,7 @@ async def _capture_tokens(timeout_s: int) -> None:
         profile = merge_profile(profile, extract_profile_from_json(data))
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await _launch_chromium(p)
         context = await browser.new_context()
         page = await context.new_page()
         page.on("request", on_request)

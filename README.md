@@ -23,7 +23,7 @@
 
 1. 下载或克隆本仓库。
 2. 双击项目根目录的 **`一键启动.bat`**。  
-   首次运行会自动创建虚拟环境、安装依赖并下载 Chromium，可能较久。
+   首次运行会自动创建虚拟环境并安装依赖。若本机已有 Edge/Chrome，**不会**再下载 Playwright 浏览器。
 3. 浏览器访问 http://127.0.0.1:8787 （一般会自动打开）。
 
 或手动：
@@ -33,7 +33,8 @@ cd endlogs
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-playwright install chromium
+# 仅当本机没有 Edge/Chrome 时需要：
+# python -m playwright install chromium --no-shell
 python launcher.py
 ```
 
@@ -55,12 +56,18 @@ python launcher.py
 ## 打包 Windows 发布包（维护者）
 
 ```powershell
+# 默认精简包（约百 MB 级）：不附带浏览器，登录用本机 Edge/Chrome
 powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
+
+# 可选：附带精简 Chromium（仍比旧包小，不含 headless_shell）
+powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1 -BundleBrowser
 ```
 
 产物在 `dist\Endlogs\`。可将该文件夹压成 zip，上传到 GitHub Release。
 
-说明：完整包若附带 Playwright 浏览器，体积会到数百 MB；也可不附带浏览器，让用户本机已装过 Chromium。
+说明：旧版会把整个 `ms-playwright`（含 headless_shell）打进包，体积常超 600MB。现在默认不捆绑；需要离线浏览器时用 `-BundleBrowser`，也只复制完整 Chromium。
+
+本地开发若磁盘紧张，可删除已忽略的 `dist/`、`build/`、`*.zip`，以及 `%LOCALAPPDATA%\ms-playwright` 下的旧缓存。
 
 ---
 

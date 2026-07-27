@@ -36,11 +36,27 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [检查] Playwright Chromium（首次可能较久）…
-python -m playwright install chromium
+rem 优先使用本机 Edge/Chrome，无需下载数百 MB 的 Playwright 浏览器。
+where msedge >nul 2>nul
+if not errorlevel 1 goto :browser_ok
+where chrome >nul 2>nul
+if not errorlevel 1 goto :browser_ok
+if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" goto :browser_ok
+if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" goto :browser_ok
+if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" goto :browser_ok
+if exist "%LocalAppData%\Google\Chrome\Application\chrome.exe" goto :browser_ok
+
+echo [检查] 未检测到 Edge/Chrome，正在安装精简 Chromium（不含 headless shell）…
+python -m playwright install chromium --no-shell
 if errorlevel 1 (
   echo [警告] Chromium 安装失败，浏览器登录可能不可用；仍可尝试手动粘贴 token。
 )
+goto :after_browser
+
+:browser_ok
+echo [检查] 已检测到本机 Edge/Chrome，跳过 Playwright 浏览器下载。
+
+:after_browser
 
 echo.
 echo 正在启动…
