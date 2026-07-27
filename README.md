@@ -1,6 +1,6 @@
 # 终末地资源日志助手（endlogs）
 
-本地工具：登录[鹰角客服中心](https://customer-service.hypergryph.com/app/endfield/gamelogs/2)后，按日期查询《明日方舟：终末地》源石 / 嵌晶玉流水，汇总获取与消耗，并支持生成报告图。
+本地工具：登录[鹰角客服中心](https://customer-service.hypergryph.com/app/endfield/gamelogs/2)后，按日期查询《明日方舟：终末地》源石 / 嵌晶玉 / 武库配额流水，汇总获取与消耗，并支持生成报告图。
 
 > **非官方工具**。接口可能变更；仅用于查询本人账号数据，请勿分享 token。
 
@@ -44,7 +44,7 @@ python launcher.py
 ## 功能概览
 
 - 浏览器登录捕获客服 token，并同步 binding 角色信息（渠道 / 昵称 / UID / 区服 / 等级）
-- 按日期查询源石、嵌晶玉流水（支持分页 `seqId`）
+- 按日期查询源石、嵌晶玉、武库配额流水（支持分页 `seqId`）
 - 汇总：期初、期末、净变化、获取 / 消耗
 - 按原因分类统计（映射见 `config.py`）
 - 明细默认折叠；可导出 CSV
@@ -86,6 +86,7 @@ endlogs/
 |------|-----|------|
 | currencyType | 1 | 源石 |
 | currencyType | 2 | 嵌晶玉 |
+| currencyType | 3 | 武库配额 |
 | changeType | 0 / 1 / 2 | 全部 / 获取 / 消耗 |
 
 Token 保存在本地 `data/`（已 gitignore），请勿提交到 Git。

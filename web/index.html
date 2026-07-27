@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/styles.css?v=6" />
+  <link rel="stylesheet" href="/static/styles.css?v=8" />
 </head>
 <body>
   <div class="atmosphere" aria-hidden="true"></div>
@@ -15,7 +15,7 @@
     <header class="hero">
       <p class="brand">ENDLOGS</p>
       <h1>终末地资源日志</h1>
-      <p class="lede">登录客服中心，按日期汇总源石与嵌晶玉的获取、消耗与原因分布。</p>
+      <p class="lede">登录客服中心，按日期汇总源石、嵌晶玉与武库配额的获取、消耗与原因分布。</p>
     </header>
 
     <section class="panel auth-panel">
@@ -54,21 +54,38 @@
       </div>
       <form id="queryForm" class="query-form">
         <label>开始日期
-          <div class="date-field">
-            <input type="date" id="startDate" required />
-            <span id="startDateText" class="date-text"></span>
+          <div class="date-field" data-date-field="startDate">
+            <div class="date-parts">
+              <input type="text" inputmode="numeric" maxlength="4" data-part="year" aria-label="年" />
+              <span class="date-unit">年</span>
+              <input type="text" inputmode="numeric" maxlength="2" data-part="month" aria-label="月" />
+              <span class="date-unit">月</span>
+              <input type="text" inputmode="numeric" maxlength="2" data-part="day" aria-label="日" />
+              <span class="date-unit">日</span>
+            </div>
+            <button type="button" class="date-picker-btn" tabindex="-1" aria-hidden="true"></button>
+            <input type="date" id="startDate" class="date-native" required aria-label="选择开始日期" />
           </div>
         </label>
         <label>结束日期
-          <div class="date-field">
-            <input type="date" id="endDate" required />
-            <span id="endDateText" class="date-text"></span>
+          <div class="date-field" data-date-field="endDate">
+            <div class="date-parts">
+              <input type="text" inputmode="numeric" maxlength="4" data-part="year" aria-label="年" />
+              <span class="date-unit">年</span>
+              <input type="text" inputmode="numeric" maxlength="2" data-part="month" aria-label="月" />
+              <span class="date-unit">月</span>
+              <input type="text" inputmode="numeric" maxlength="2" data-part="day" aria-label="日" />
+              <span class="date-unit">日</span>
+            </div>
+            <button type="button" class="date-picker-btn" tabindex="-1" aria-hidden="true"></button>
+            <input type="date" id="endDate" class="date-native" required aria-label="选择结束日期" />
           </div>
         </label>
         <fieldset>
           <legend>资源</legend>
           <label class="check"><input type="checkbox" name="currency" value="1" checked />源石</label>
           <label class="check"><input type="checkbox" name="currency" value="2" checked />嵌晶玉</label>
+          <label class="check"><input type="checkbox" name="currency" value="3" checked />武库配额</label>
         </fieldset>
         <label>变动类型
           <select id="changeType">
@@ -105,6 +122,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=6"></script>
+  <script src="/static/app.js?v=8"></script>
 </body>
 </html>

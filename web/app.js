@@ -12,8 +12,6 @@ const resultsEl = document.getElementById("results");
 const btnQuery = document.getElementById("btnQuery");
 const startDateEl = document.getElementById("startDate");
 const endDateEl = document.getElementById("endDate");
-const startDateText = document.getElementById("startDateText");
-const endDateText = document.getElementById("endDateText");
 
 let pollTimer = null;
 let lastProfile = null;
@@ -33,17 +31,128 @@ function formatZhDate(iso) {
   return `${y}年${m}月${d}日`;
 }
 
-function syncDateText() {
-  startDateText.textContent = formatZhDate(startDateEl.value);
-  endDateText.textContent = formatZhDate(endDateEl.value);
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+function daysInMonth(year, month) {
+  return new Date(year, month, 0).getDate();
+}
+
+function parseISODate(iso) {
+  if (!iso) return null;
+  const parts = iso.split("-").map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
+  const [y, m, d] = parts;
+  if (y < 1 || m < 1 || m > 12 || d < 1 || d > daysInMonth(y, m)) return null;
+  return { y, m, d };
+}
+
+function toISODate(y, m, d) {
+  return `${y}-${pad2(m)}-${pad2(d)}`;
+}
+
+function bindDateField(nativeEl) {
+  const field = nativeEl.closest("[data-date-field]");
+  if (!field) return;
+
+  const yearEl = field.querySelector('[data-part="year"]');
+  const monthEl = field.querySelector('[data-part="month"]');
+  const dayEl = field.querySelector('[data-part="day"]');
+  const partEls = [yearEl, monthEl, dayEl];
+
+  function syncPartsFromNative() {
+    const parsed = parseISODate(nativeEl.value);
+    if (!parsed) return;
+    yearEl.value = String(parsed.y);
+    monthEl.value = String(parsed.m);
+    dayEl.value = String(parsed.d);
+  }
+
+  function commitParts() {
+    const y = Number(yearEl.value);
+    const m = Number(monthEl.value);
+    const d = Number(dayEl.value);
+    if (!Number.isInteger(y) || y < 1970 || y > 2100) {
+      syncPartsFromNative();
+      return;
+    }
+    if (!Number.isInteger(m) || m < 1 || m > 12) {
+      syncPartsFromNative();
+      return;
+    }
+    const maxDay = daysInMonth(y, m);
+    if (!Number.isInteger(d) || d < 1 || d > maxDay) {
+      syncPartsFromNative();
+      return;
+    }
+    nativeEl.value = toISODate(y, m, d);
+    syncPartsFromNative();
+  }
+
+  function onlyDigits(el) {
+    el.value = el.value.replace(/\D/g, "");
+  }
+
+  yearEl.addEventListener("input", () => {
+    onlyDigits(yearEl);
+    if (yearEl.value.length >= 4) monthEl.focus();
+  });
+  monthEl.addEventListener("input", () => {
+    onlyDigits(monthEl);
+    if (monthEl.value.length >= 2) dayEl.focus();
+  });
+  dayEl.addEventListener("input", () => {
+    onlyDigits(dayEl);
+    if (dayEl.value.length >= 2) commitParts();
+  });
+
+  partEls.forEach((el) => {
+    el.addEventListener("blur", commitParts);
+    el.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        commitParts();
+        el.blur();
+      }
+      if (ev.key === "ArrowLeft" && el.selectionStart === 0) {
+        const idx = partEls.indexOf(el);
+        if (idx > 0) {
+          ev.preventDefault();
+          partEls[idx - 1].focus();
+        }
+      }
+      if (ev.key === "ArrowRight" && el.selectionStart === el.value.length) {
+        const idx = partEls.indexOf(el);
+        if (idx < partEls.length - 1) {
+          ev.preventDefault();
+          partEls[idx + 1].focus();
+        }
+      }
+      if (ev.key === "Backspace" && el.value.length === 0) {
+        const idx = partEls.indexOf(el);
+        if (idx > 0) {
+          ev.preventDefault();
+          partEls[idx - 1].focus();
+        }
+      }
+    });
+    el.addEventListener("focus", () => {
+      requestAnimationFrame(() => el.select());
+    });
+  });
+
+  nativeEl.addEventListener("change", syncPartsFromNative);
+  nativeEl.addEventListener("input", syncPartsFromNative);
+
+  syncPartsFromNative();
 }
 
 const today = todayISO();
 startDateEl.value = today;
 endDateEl.value = today;
-syncDateText();
-startDateEl.addEventListener("change", syncDateText);
-endDateEl.addEventListener("change", syncDateText);
+bindDateField(startDateEl);
+bindDateField(endDateEl);
 
 async function api(path, options = {}) {
   const resp = await fetch(path, {

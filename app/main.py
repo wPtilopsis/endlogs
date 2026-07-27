@@ -37,7 +37,7 @@ class BindingTokenBody(BaseModel):
 class QueryBody(BaseModel):
     start_date: date
     end_date: date
-    currency_types: list[int] = Field(default_factory=lambda: [1, 2])
+    currency_types: list[int] = Field(default_factory=lambda: [1, 2, 3])
     change_type: int = 0
 
 
