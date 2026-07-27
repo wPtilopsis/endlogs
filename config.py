@@ -43,6 +43,7 @@ REQUEST_TIMEOUT_S = 30
 CURRENCY_TYPES = {
     1: "源石",
     2: "嵌晶玉",
+    3: "武库配额",
 }
 
 CHANGE_TYPES = {
@@ -75,6 +76,10 @@ CHANGE_REASONS_BY_CURRENCY: dict[int, dict[str, str]] = {
         "13": "任务奖励",
         "12": "协议通行证奖励",
         "15": "副本奖励",
+    },
+    3: {  # 武库配额
+        "10": "干员寻访赠送",
+        "25": "武库交易所消耗",
     },
 }
 
