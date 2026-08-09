@@ -15,7 +15,14 @@ from auth import clear_tokens, get_login_status, load_tokens, save_tokens, start
 from auth.tokens import SessionTokens
 from client import CurrencyLogClient
 from client.binding import fetch_binding_profile
-from config import CHANGE_TYPES, CURRENCY_TYPES, DATA_DIR, WEB_DIR
+from config import (
+    CHANGE_TYPES,
+    CURRENCY_TYPES,
+    DATA_DIR,
+    WEB_DIR,
+    change_reasons_summary,
+    update_change_reasons_from_remote,
+)
 from stats import aggregate_logs, date_bounds
 
 app = FastAPI(title="终末地资源日志助手", version="0.1.0")
@@ -51,10 +58,25 @@ async def index() -> HTMLResponse:
 
 @app.get("/api/meta")
 async def meta() -> dict[str, Any]:
+    summary = change_reasons_summary()
     return {
         "currencyTypes": [{"id": k, "name": v} for k, v in CURRENCY_TYPES.items()],
         "changeTypes": [{"id": k, "name": v} for k, v in CHANGE_TYPES.items()],
+        "changeReasonsCount": summary["count"],
     }
+
+
+@app.get("/api/change-reasons")
+async def get_change_reasons() -> dict[str, Any]:
+    return change_reasons_summary()
+
+
+@app.post("/api/change-reasons/update")
+def update_change_reasons() -> dict[str, Any]:
+    try:
+        return update_change_reasons_from_remote()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/auth/status")

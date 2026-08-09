@@ -10,6 +10,7 @@ const queryForm = document.getElementById("queryForm");
 const queryStatus = document.getElementById("queryStatus");
 const resultsEl = document.getElementById("results");
 const btnQuery = document.getElementById("btnQuery");
+const btnUpdateReasons = document.getElementById("btnUpdateReasons");
 const startDateEl = document.getElementById("startDate");
 const endDateEl = document.getElementById("endDate");
 
@@ -786,4 +787,22 @@ queryForm.addEventListener("submit", async (e) => {
 
 refreshAuth().catch((err) => {
   authMessage.textContent = err.message;
+});
+
+btnUpdateReasons.addEventListener("click", async () => {
+  const ok = window.confirm(
+    "将从仓库下载最新 change_reasons.json 并覆盖本地文件。本地手工修改会被替换，是否继续？"
+  );
+  if (!ok) return;
+
+  btnUpdateReasons.disabled = true;
+  queryStatus.textContent = "正在更新码表…";
+  try {
+    const data = await api("/api/change-reasons/update", { method: "POST" });
+    queryStatus.textContent = data.message || `码表已更新，共 ${data.count || 0} 条`;
+  } catch (err) {
+    queryStatus.textContent = err.message || "更新码表失败";
+  } finally {
+    btnUpdateReasons.disabled = false;
+  }
 });

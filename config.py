@@ -26,6 +26,9 @@ TOKEN_PATH = DATA_DIR / "tokens.json"
 WEB_DIR = RESOURCE_DIR / "web"
 CHANGE_REASONS_PATH = BASE_DIR / "change_reasons.json"
 CHANGE_REASONS_FILENAME = "change_reasons.json"
+CHANGE_REASONS_REMOTE_URL = (
+    "https://raw.githubusercontent.com/wPtilopsis/endlogs/main/change_reasons.json"
+)
 
 API_BASE = "https://customer-service.hypergryph.com"
 CURRENCY_LOG_PATH = "/api/center/open/v1/endfield/game_logs/currency"
@@ -174,5 +177,82 @@ def load_change_reasons(*, force: bool = False) -> dict[str, str]:
 
 # 兼容旧导入名；运行时应优先调用 load_change_reasons()
 CHANGE_REASONS = load_change_reasons()
+
+
+def change_reasons_summary() -> dict[str, object]:
+    """当前本地码表摘要，供 API / 前端展示。"""
+    ensure_change_reasons_file()
+    reasons = load_change_reasons()
+    return {
+        "path": str(CHANGE_REASONS_PATH),
+        "count": len(reasons),
+        "remoteUrl": CHANGE_REASONS_REMOTE_URL,
+        "exists": CHANGE_REASONS_PATH.exists(),
+    }
+
+
+def apply_change_reasons_text(text: str) -> dict[str, object]:
+    """校验并原子写入 change_reasons.json，然后强制重载缓存。"""
+    try:
+        raw = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"远端码表不是合法 JSON：{exc}") from exc
+
+    reasons = _normalize_reasons(raw)
+    if not reasons:
+        raise ValueError("远端码表缺少非空 reasons 映射")
+
+    # 保留远端原文结构；若无 reasons 字段则包一层便于本地手改
+    if isinstance(raw, dict) and isinstance(raw.get("reasons"), dict):
+        payload_text = text if text.endswith("\n") else text + "\n"
+    else:
+        payload = {
+            "_comment": (
+                "三币种共用 changeReason 码表。放在 Endlogs.exe 同目录；"
+                "改完保存后重新查询即可，无需重新打包。"
+                "未收录的码会显示为「未知原因(码)」。"
+            ),
+            "reasons": dict(sorted(reasons.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else kv[0])),
+        }
+        payload_text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+
+    tmp_path = CHANGE_REASONS_PATH.with_suffix(CHANGE_REASONS_PATH.suffix + ".tmp")
+    try:
+        tmp_path.write_text(payload_text, encoding="utf-8")
+        # 再读一遍确认落盘内容可解析
+        if _read_change_reasons_file(tmp_path) is None:
+            raise ValueError("写入校验失败，已取消更新")
+        tmp_path.replace(CHANGE_REASONS_PATH)
+    except OSError as exc:
+        try:
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except OSError:
+            pass
+        raise ValueError(f"写入本地码表失败：{exc}") from exc
+
+    loaded = load_change_reasons(force=True)
+    return {
+        "updated": True,
+        "count": len(loaded),
+        "path": str(CHANGE_REASONS_PATH),
+        "message": f"码表已更新，共 {len(loaded)} 条",
+    }
+
+
+def update_change_reasons_from_remote() -> dict[str, object]:
+    """从 GitHub raw 拉取最新码表并覆盖本地文件。"""
+    import httpx
+
+    try:
+        with httpx.Client(timeout=REQUEST_TIMEOUT_S, follow_redirects=True) as client:
+            resp = client.get(CHANGE_REASONS_REMOTE_URL)
+            resp.raise_for_status()
+            text = resp.text
+    except httpx.HTTPError as exc:
+        raise ValueError(f"下载码表失败：{exc}") from exc
+
+    return apply_change_reasons_text(text)
+
 
 TIMEZONE = "Asia/Shanghai"
