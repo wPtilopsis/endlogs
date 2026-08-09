@@ -20,6 +20,7 @@
 - 端口被占用：关闭之前开着的 Endlogs 窗口，或重启电脑后再开。
 - 登录窗口打不开：确认已安装 Microsoft Edge 或 Google Chrome；也可在页面用「手动粘贴 token」。
 - 不要把 data 文件夹或截图里的 token 发给别人。
+- 原因显示「未知原因」：可编辑同目录 change_reasons.json，在 reasons 里补上对应数字码后重新查询。
 
 四、开发者 / 源码
 源码与更新见 GitHub 仓库 README。

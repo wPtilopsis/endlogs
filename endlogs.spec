@@ -12,6 +12,7 @@ a = Analysis(
     binaries=[],
     datas=[
         (str(root / "web"), "web"),
+        (str(root / "change_reasons.json"), "."),
     ],
     hiddenimports=[
         "uvicorn.logging",

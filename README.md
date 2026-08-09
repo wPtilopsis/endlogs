@@ -47,7 +47,7 @@ python launcher.py
 - 浏览器登录捕获客服 token，并同步 binding 角色信息（渠道 / 昵称 / UID / 区服 / 等级）
 - 按日期查询源石、嵌晶玉、武库配额流水（支持分页 `seqId`）
 - 汇总：期初、期末、净变化、获取 / 消耗
-- 按原因分类统计（映射见 `config.py`）
+- 按原因分类统计（映射见同目录 `change_reasons.json`，可直接改文件更新，无需重打包）
 - 明细默认折叠；可导出 CSV
 - 汇总报告：预览后确认保存为 PNG
 
@@ -80,10 +80,30 @@ endlogs/
   main.py              # 仅启动 API
   app/ auth/ client/ stats/ web/
   config.py
+  change_reasons.json  # changeReason 码表（可编辑，重启/重新查询即可）
   endlogs.spec         # PyInstaller
   scripts/build_windows.ps1
   USER_GUIDE.txt
 ```
+
+---
+
+## 更新原因码映射
+
+三币种共用同一套 `changeReason` 码。编辑程序目录下的 `change_reasons.json`（`reasons` 对象）后保存，再查一次即可，**不必重新打包**。
+
+示例：
+
+```json
+{
+  "reasons": {
+    "10": "干员寻访",
+    "25": "武库交易所消耗"
+  }
+}
+```
+
+未收录的码会显示为「未知原因(码)」。
 
 ---
 

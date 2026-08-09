@@ -6,7 +6,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from client.currency import CurrencyLogItem
-from config import CHANGE_REASONS_BY_CURRENCY, CHANGE_TYPES, CURRENCY_TYPES, TIMEZONE
+from config import CHANGE_TYPES, CURRENCY_TYPES, TIMEZONE, load_change_reasons
 
 
 def date_bounds(start: date, end: date) -> tuple[int, int]:
@@ -17,22 +17,12 @@ def date_bounds(start: date, end: date) -> tuple[int, int]:
 
 
 def reason_label(code: str | int, currency_type: int | None = None) -> str:
+    # currency_type 保留兼容旧调用；三币种共用同一套 changeReason 码表
+    _ = currency_type
     key = str(code).strip()
-    try:
-        currency_key = int(currency_type) if currency_type is not None else 0
-    except (TypeError, ValueError):
-        currency_key = 0
-
-    mapping = CHANGE_REASONS_BY_CURRENCY.get(currency_key, {})
-    if key in mapping:
-        return mapping[key]
-
-    # 当前币种未收录时，回退到其他币种同名原因码（避免漏配导致一直显示未知）
-    for other_type, other_map in CHANGE_REASONS_BY_CURRENCY.items():
-        if other_type == currency_key:
-            continue
-        if key in other_map:
-            return other_map[key]
+    label = load_change_reasons().get(key)
+    if label:
+        return label
     return f"未知原因({key})"
 
 

@@ -26,6 +26,7 @@ jobs:
           python -m playwright install chromium
           python -m PyInstaller --noconfirm --clean endlogs.spec
           Copy-Item USER_GUIDE.txt dist\Endlogs\使用说明.txt
+          Copy-Item change_reasons.json dist\Endlogs\change_reasons.json
           if (Test-Path "$env:LOCALAPPDATA\ms-playwright") {
             Copy-Item -Recurse "$env:LOCALAPPDATA\ms-playwright" dist\Endlogs\ms-playwright
             Set-Content -Encoding ASCII dist\Endlogs\一键启动.bat "@echo off`r`nset PLAYWRIGHT_BROWSERS_PATH=%~dp0ms-playwright`r`nstart `"`" `"%~dp0Endlogs.exe`"`r`n"

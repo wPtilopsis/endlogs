@@ -40,8 +40,9 @@ if (-not (Test-Path $Exe)) {
   throw "Build failed: Endlogs.exe not found"
 }
 
-Write-Host "==> Copy docs" -ForegroundColor Cyan
+Write-Host "==> Copy docs and editable config" -ForegroundColor Cyan
 Copy-Item -Force "USER_GUIDE.txt" (Join-Path $Out "USER_GUIDE.txt")
+Copy-Item -Force "change_reasons.json" (Join-Path $Out "change_reasons.json")
 if (Test-Path "LICENSE") {
   Copy-Item -Force "LICENSE" (Join-Path $Out "LICENSE.txt")
 }
