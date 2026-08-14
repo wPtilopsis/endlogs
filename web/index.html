@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/styles.css?v=8" />
+  <link rel="stylesheet" href="/static/styles.css?v=10" />
 </head>
 <body>
   <div class="atmosphere" aria-hidden="true"></div>
@@ -94,10 +94,13 @@
             <option value="2">消耗</option>
           </select>
         </label>
+        <div class="reasons-update-actions">
+          <button type="button" class="btn ghost" id="btnUpdateReasonsAuto">自动更新变动原因码表</button>
+          <button type="button" class="btn ghost" id="btnUpdateReasonsManual">手动更新变动原因码表</button>
+        </div>
         <div class="query-actions">
           <button type="submit" class="btn primary" id="btnQuery">开始查询</button>
           <button type="button" class="btn ghost" id="btnReport" disabled>生成汇总报告</button>
-          <button type="button" class="btn ghost" id="btnUpdateReasons" title="从仓库拉取最新码表，将覆盖本地 change_reasons.json">更新码表</button>
         </div>
       </form>
       <p id="queryStatus" class="muted" aria-live="polite"></p>
@@ -123,6 +126,24 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=9"></script>
+  <div id="reasonsModal" class="report-modal hidden" role="dialog" aria-modal="true" aria-labelledby="reasonsModalTitle">
+    <div class="report-modal-backdrop" data-close-reasons></div>
+    <div class="report-modal-panel reasons-modal-panel">
+      <div class="report-modal-head">
+        <h2 id="reasonsModalTitle">手动更新变动原因码表</h2>
+        <button type="button" class="btn text" data-close-reasons>关闭</button>
+      </div>
+      <div class="report-modal-body reasons-modal-body">
+        <p class="muted">粘贴完整的 <code>change_reasons.json</code> 内容（含 <code>version</code> 与 <code>reasons</code>），将覆盖本地文件。</p>
+        <textarea id="reasonsJsonInput" rows="14" spellcheck="false" placeholder='{"version":"2026-08-14","reasons":{"10":"干员寻访"}}'></textarea>
+      </div>
+      <div class="report-modal-actions">
+        <button type="button" class="btn ghost" data-close-reasons>取消</button>
+        <button type="button" class="btn primary" id="btnApplyReasonsManual">确认更新</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=12"></script>
 </body>
 </html>

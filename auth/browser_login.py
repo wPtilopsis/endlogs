@@ -48,6 +48,7 @@ class LoginState:
 
 _login_state = LoginState()
 _login_thread: threading.Thread | None = None
+_login_cancel = threading.Event()
 
 
 def get_login_status() -> dict[str, Any]:
@@ -57,11 +58,17 @@ def get_login_status() -> dict[str, Any]:
 def start_browser_login(timeout_s: int = 300) -> dict[str, Any]:
     global _login_thread
     snap = _login_state.snapshot()
-    if snap["status"] == "waiting":
-        return snap
-    if _login_thread and _login_thread.is_alive():
-        return _login_state.snapshot()
+    if snap["status"] == "waiting" and _login_thread and _login_thread.is_alive():
+        # 用户再次点击：取消上一轮（例如已关窗但仍卡在 waiting），重新打开登录页
+        _login_cancel.set()
+        _login_thread.join(timeout=5.0)
+        if _login_thread.is_alive():
+            return {
+                **_login_state.snapshot(),
+                "message": "上一轮登录仍在结束中，请稍后再试…",
+            }
 
+    _login_cancel.clear()
     _login_state.set("waiting", "正在打开浏览器，请在页面中完成登录并选择角色…")
     _login_thread = threading.Thread(
         target=_run_login_sync,
@@ -76,7 +83,10 @@ def _run_login_sync(timeout_s: int) -> None:
     try:
         asyncio.run(_capture_tokens(timeout_s))
     except Exception as exc:  # noqa: BLE001
-        _login_state.set("failed", f"登录失败：{exc}")
+        if _login_cancel.is_set():
+            _login_state.set("cancelled", "已取消登录，可重新点击「浏览器登录」。")
+        else:
+            _login_state.set("failed", f"登录失败：{exc}")
 
 
 def _token_from_binding_url(url: str) -> str:
@@ -121,6 +131,8 @@ async def _sync_binding_profile(page, captured: dict[str, str], profile: RolePro
         await page.goto(BINDING_PAGE_URL, wait_until="domcontentloaded")
         deadline = asyncio.get_event_loop().time() + 20
         while asyncio.get_event_loop().time() < deadline:
+            if _login_cancel.is_set():
+                break
             if captured.get("binding_token") and result.is_ready() and result.channel_name:
                 break
             if result.is_ready() and result.level is not None and result.channel_name:
@@ -162,6 +174,14 @@ async def _launch_chromium(playwright: Any) -> Any:
         if last_error is not None:
             raise RuntimeError(f"{hint}（系统浏览器：{last_error}；Chromium：{exc}）") from exc
         raise RuntimeError(f"{hint}（{exc}）") from exc
+
+
+async def _close_browser(browser: Any) -> None:
+    try:
+        if browser is not None and browser.is_connected():
+            await browser.close()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 async def _capture_tokens(timeout_s: int) -> None:
@@ -229,6 +249,10 @@ async def _capture_tokens(timeout_s: int) -> None:
         page.on("request", on_request)
         page.on("response", on_response)
         await page.goto(LOGIN_URL, wait_until="domcontentloaded")
+        if _login_cancel.is_set():
+            _login_state.set("cancelled", "已取消登录，可重新点击「浏览器登录」。")
+            await _close_browser(browser)
+            return
         _login_state.set(
             "waiting",
             "请在弹出的浏览器中登录鹰角账号，并进入终末地游戏日志页面；程序会自动捕获 token 与角色信息。",
@@ -236,9 +260,41 @@ async def _capture_tokens(timeout_s: int) -> None:
 
         deadline = asyncio.get_event_loop().time() + timeout_s
         token_ready_at: float | None = None
+
+        def _session_gone() -> bool:
+            if _login_cancel.is_set():
+                return True
+            try:
+                if not browser.is_connected():
+                    return True
+                if page.is_closed():
+                    return True
+            except Exception:  # noqa: BLE001
+                return True
+            return False
+
         try:
             while asyncio.get_event_loop().time() < deadline:
-                storage_profile = await _read_storage_profile(page)
+                if _session_gone():
+                    _login_state.set(
+                        "cancelled",
+                        "登录窗口已关闭或已取消，请重新点击「浏览器登录」。",
+                    )
+                    await _close_browser(browser)
+                    return
+
+                try:
+                    storage_profile = await _read_storage_profile(page)
+                except Exception:  # noqa: BLE001
+                    if _session_gone():
+                        _login_state.set(
+                            "cancelled",
+                            "登录窗口已关闭，请重新点击「浏览器登录」。",
+                        )
+                        await _close_browser(browser)
+                        return
+                    storage_profile = RoleProfile()
+
                 profile = merge_profile(profile, storage_profile)
                 if captured.get("role_server_id"):
                     profile = merge_profile(
@@ -262,6 +318,13 @@ async def _capture_tokens(timeout_s: int) -> None:
 
                     if not binding_fetched and waited >= 1.5:
                         binding_fetched = True
+                        if _session_gone():
+                            _login_state.set(
+                                "cancelled",
+                                "登录窗口已关闭或已取消，请重新点击「浏览器登录」。",
+                            )
+                            await _close_browser(browser)
+                            return
                         profile = await _sync_binding_profile(page, captured, profile)
                         profile_ok = (
                             profile.is_ready()
@@ -294,15 +357,18 @@ async def _capture_tokens(timeout_s: int) -> None:
                             msg = "登录成功，token 已保存（未完整捕获角色信息，可点「刷新角色信息」）。"
                         _login_state.set("success", msg, tokens)
                         await asyncio.sleep(1.0)
-                        await browser.close()
+                        await _close_browser(browser)
                         return
                 await asyncio.sleep(0.5)
 
             _login_state.set("failed", f"登录超时（{timeout_s}s），未捕获到完整 token。")
-            await browser.close()
+            await _close_browser(browser)
         except Exception as exc:  # noqa: BLE001
-            _login_state.set("failed", f"登录过程异常：{exc}")
-            try:
-                await browser.close()
-            except Exception:  # noqa: BLE001
-                pass
+            if _session_gone():
+                _login_state.set(
+                    "cancelled",
+                    "登录窗口已关闭或已取消，请重新点击「浏览器登录」。",
+                )
+            else:
+                _login_state.set("failed", f"登录过程异常：{exc}")
+            await _close_browser(browser)

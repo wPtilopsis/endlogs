@@ -107,6 +107,35 @@ def _read_change_reasons_file(path: Path) -> dict[str, str] | None:
     return _normalize_reasons(raw)
 
 
+def _read_change_reasons_meta(path: Path) -> dict[str, str]:
+    """读取码表元数据（如 version），失败返回空。"""
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    version = raw.get("version")
+    if version is None or str(version).strip() == "":
+        return {}
+    return {"version": str(version).strip()}
+
+
+def _default_change_reasons_payload() -> dict[str, object]:
+    from datetime import date
+
+    return {
+        "_comment": (
+            "三币种共用 changeReason 码表。放在 Endlogs.exe 同目录；"
+            "改完保存后重新查询即可，无需重新打包。"
+            "未收录的码会显示为「未知原因(码)」。"
+            "version 为码表版本（日期）。"
+        ),
+        "version": date.today().isoformat(),
+        "reasons": dict(sorted(_DEFAULT_CHANGE_REASONS.items(), key=lambda kv: int(kv[0]))),
+    }
+
+
 def _bundled_change_reasons_path() -> Path:
     return RESOURCE_DIR / CHANGE_REASONS_FILENAME
 
@@ -117,14 +146,7 @@ def ensure_change_reasons_file() -> Path:
         return CHANGE_REASONS_PATH
 
     bundled = _bundled_change_reasons_path()
-    payload = {
-        "_comment": (
-            "三币种共用 changeReason 码表。放在 Endlogs.exe 同目录；"
-            "改完保存后重新查询即可，无需重新打包。"
-            "未收录的码会显示为「未知原因(码)」。"
-        ),
-        "reasons": dict(sorted(_DEFAULT_CHANGE_REASONS.items(), key=lambda kv: int(kv[0]))),
-    }
+    payload = _default_change_reasons_payload()
     if bundled.exists() and bundled.resolve() != CHANGE_REASONS_PATH.resolve():
         try:
             CHANGE_REASONS_PATH.write_text(bundled.read_text(encoding="utf-8"), encoding="utf-8")
@@ -183,9 +205,11 @@ def change_reasons_summary() -> dict[str, object]:
     """当前本地码表摘要，供 API / 前端展示。"""
     ensure_change_reasons_file()
     reasons = load_change_reasons()
+    meta = _read_change_reasons_meta(CHANGE_REASONS_PATH) if CHANGE_REASONS_PATH.exists() else {}
     return {
         "path": str(CHANGE_REASONS_PATH),
         "count": len(reasons),
+        "version": meta.get("version") or "",
         "remoteUrl": CHANGE_REASONS_REMOTE_URL,
         "exists": CHANGE_REASONS_PATH.exists(),
     }
@@ -193,6 +217,8 @@ def change_reasons_summary() -> dict[str, object]:
 
 def apply_change_reasons_text(text: str) -> dict[str, object]:
     """校验并原子写入 change_reasons.json，然后强制重载缓存。"""
+    from datetime import date
+
     try:
         raw = json.loads(text)
     except json.JSONDecodeError as exc:
@@ -204,16 +230,20 @@ def apply_change_reasons_text(text: str) -> dict[str, object]:
 
     # 保留远端原文结构；若无 reasons 字段则包一层便于本地手改
     if isinstance(raw, dict) and isinstance(raw.get("reasons"), dict):
-        payload_text = text if text.endswith("\n") else text + "\n"
+        if not str(raw.get("version") or "").strip():
+            raw = dict(raw)
+            raw["version"] = date.today().isoformat()
+            payload_text = json.dumps(raw, ensure_ascii=False, indent=2) + "\n"
+        else:
+            payload_text = text if text.endswith("\n") else text + "\n"
+        version = str(raw.get("version") or "").strip()
     else:
-        payload = {
-            "_comment": (
-                "三币种共用 changeReason 码表。放在 Endlogs.exe 同目录；"
-                "改完保存后重新查询即可，无需重新打包。"
-                "未收录的码会显示为「未知原因(码)」。"
-            ),
-            "reasons": dict(sorted(reasons.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else kv[0])),
-        }
+        version = date.today().isoformat()
+        payload = _default_change_reasons_payload()
+        payload["version"] = version
+        payload["reasons"] = dict(
+            sorted(reasons.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else kv[0])
+        )
         payload_text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
 
     tmp_path = CHANGE_REASONS_PATH.with_suffix(CHANGE_REASONS_PATH.suffix + ".tmp")
@@ -232,11 +262,16 @@ def apply_change_reasons_text(text: str) -> dict[str, object]:
         raise ValueError(f"写入本地码表失败：{exc}") from exc
 
     loaded = load_change_reasons(force=True)
+    version = version or _read_change_reasons_meta(CHANGE_REASONS_PATH).get("version", "")
+    msg = f"码表已更新，共 {len(loaded)} 条"
+    if version:
+        msg += f"（版本 {version}）"
     return {
         "updated": True,
         "count": len(loaded),
+        "version": version,
         "path": str(CHANGE_REASONS_PATH),
-        "message": f"码表已更新，共 {len(loaded)} 条",
+        "message": msg,
     }
 
 

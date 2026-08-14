@@ -20,6 +20,7 @@ from config import (
     CURRENCY_TYPES,
     DATA_DIR,
     WEB_DIR,
+    apply_change_reasons_text,
     change_reasons_summary,
     update_change_reasons_from_remote,
 )
@@ -48,6 +49,10 @@ class QueryBody(BaseModel):
     change_type: int = 0
 
 
+class ChangeReasonsManualBody(BaseModel):
+    content: str = Field(min_length=2)
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index() -> HTMLResponse:
     index_path = WEB_DIR / "index.html"
@@ -63,6 +68,7 @@ async def meta() -> dict[str, Any]:
         "currencyTypes": [{"id": k, "name": v} for k, v in CURRENCY_TYPES.items()],
         "changeTypes": [{"id": k, "name": v} for k, v in CHANGE_TYPES.items()],
         "changeReasonsCount": summary["count"],
+        "changeReasonsVersion": summary.get("version") or "",
     }
 
 
@@ -75,6 +81,14 @@ async def get_change_reasons() -> dict[str, Any]:
 def update_change_reasons() -> dict[str, Any]:
     try:
         return update_change_reasons_from_remote()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/change-reasons/update-manual")
+def update_change_reasons_manual(body: ChangeReasonsManualBody) -> dict[str, Any]:
+    try:
+        return apply_change_reasons_text(body.content)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

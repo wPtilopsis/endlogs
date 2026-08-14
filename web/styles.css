@@ -382,6 +382,34 @@ legend {
   flex: 1 1 180px;
 }
 
+.reasons-update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  grid-column: 1 / -1;
+}
+
+.reasons-update-actions .btn {
+  flex: 1 1 180px;
+}
+
+.reasons-modal-panel {
+  max-width: 720px;
+}
+
+.reasons-modal-body {
+  display: grid;
+  gap: 10px;
+}
+
+.reasons-modal-body textarea {
+  width: 100%;
+  min-height: 280px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  resize: vertical;
+}
+
 .results {
   display: grid;
   gap: 18px;

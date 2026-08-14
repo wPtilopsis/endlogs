@@ -10,7 +10,11 @@ const queryForm = document.getElementById("queryForm");
 const queryStatus = document.getElementById("queryStatus");
 const resultsEl = document.getElementById("results");
 const btnQuery = document.getElementById("btnQuery");
-const btnUpdateReasons = document.getElementById("btnUpdateReasons");
+const btnUpdateReasonsAuto = document.getElementById("btnUpdateReasonsAuto");
+const btnUpdateReasonsManual = document.getElementById("btnUpdateReasonsManual");
+const btnApplyReasonsManual = document.getElementById("btnApplyReasonsManual");
+const reasonsModal = document.getElementById("reasonsModal");
+const reasonsJsonInput = document.getElementById("reasonsJsonInput");
 const startDateEl = document.getElementById("startDate");
 const endDateEl = document.getElementById("endDate");
 
@@ -196,7 +200,7 @@ function setAuthUI(status) {
   const browser = status.browser_login || {};
   if (browser.status === "waiting") {
     authMessage.textContent = browser.message || "等待浏览器登录…";
-  } else if (browser.status === "failed") {
+  } else if (browser.status === "failed" || browser.status === "cancelled") {
     authMessage.textContent = browser.message || "登录失败";
   } else if (loggedIn && hasProfile) {
     authMessage.textContent = "角色信息已同步。";
@@ -789,20 +793,65 @@ refreshAuth().catch((err) => {
   authMessage.textContent = err.message;
 });
 
-btnUpdateReasons.addEventListener("click", async () => {
+function closeReasonsModal() {
+  reasonsModal.classList.add("hidden");
+}
+
+function openReasonsModal() {
+  reasonsJsonInput.value = "";
+  reasonsModal.classList.remove("hidden");
+  reasonsJsonInput.focus();
+}
+
+btnUpdateReasonsAuto.addEventListener("click", async () => {
   const ok = window.confirm(
-    "将从仓库下载最新 change_reasons.json 并覆盖本地文件。本地手工修改会被替换，是否继续？"
+    "将从 GitHub 仓库自动下载最新 change_reasons.json 并覆盖本地文件。\n\n" +
+      "部分网络环境可能无法访问 GitHub，导致更新失败；若失败请改用「手动更新变动原因码表」。\n\n" +
+      "本地手工修改会被替换，是否继续？"
   );
   if (!ok) return;
 
-  btnUpdateReasons.disabled = true;
-  queryStatus.textContent = "正在更新码表…";
+  btnUpdateReasonsAuto.disabled = true;
+  btnUpdateReasonsManual.disabled = true;
+  queryStatus.textContent = "正在自动更新码表…";
   try {
     const data = await api("/api/change-reasons/update", { method: "POST" });
     queryStatus.textContent = data.message || `码表已更新，共 ${data.count || 0} 条`;
   } catch (err) {
-    queryStatus.textContent = err.message || "更新码表失败";
+    queryStatus.textContent = `${err.message || "自动更新失败"}（可改用手动更新）`;
   } finally {
-    btnUpdateReasons.disabled = false;
+    btnUpdateReasonsAuto.disabled = false;
+    btnUpdateReasonsManual.disabled = false;
   }
+});
+
+btnUpdateReasonsManual.addEventListener("click", () => {
+  openReasonsModal();
+});
+
+btnApplyReasonsManual.addEventListener("click", async () => {
+  const content = reasonsJsonInput.value.trim();
+  if (!content) {
+    queryStatus.textContent = "请先粘贴完整的 change_reasons.json 内容";
+    return;
+  }
+
+  btnApplyReasonsManual.disabled = true;
+  queryStatus.textContent = "正在手动更新码表…";
+  try {
+    const data = await api("/api/change-reasons/update-manual", {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    });
+    queryStatus.textContent = data.message || `码表已更新，共 ${data.count || 0} 条`;
+    closeReasonsModal();
+  } catch (err) {
+    queryStatus.textContent = err.message || "手动更新失败";
+  } finally {
+    btnApplyReasonsManual.disabled = false;
+  }
+});
+
+reasonsModal.querySelectorAll("[data-close-reasons]").forEach((el) => {
+  el.addEventListener("click", closeReasonsModal);
 });
