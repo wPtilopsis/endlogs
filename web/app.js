@@ -418,12 +418,11 @@ function renderResult(item, startDate, endDate, changeType) {
   </article>`;
 }
 
-function topReasons(rows, kind, limit = 6) {
+function topReasons(rows, kind) {
   return (rows || [])
     .filter((r) => r.kind === kind)
     .slice()
-    .sort((a, b) => Number(b.amount) - Number(a.amount))
-    .slice(0, limit);
+    .sort((a, b) => Number(b.amount) - Number(a.amount));
 }
 
 const REPORT_COLORS = {
@@ -631,11 +630,7 @@ function generateReportImage(profile, query) {
         const share = pct(amount, total);
         ctx.fillStyle = REPORT_COLORS.ink;
         ctx.font = "400 16px Noto Sans SC, sans-serif";
-        ctx.fillText(
-          truncateText(ctx, String(r.label || "-"), col.amount - col.label - 24),
-          col.label,
-          cy
-        );
+        ctx.fillText(String(r.label || "-"), col.label, cy);
 
         ctx.fillStyle = tone;
         ctx.font = "500 16px IBM Plex Mono, Noto Sans SC, monospace";
@@ -656,15 +651,6 @@ function generateReportImage(profile, query) {
   }
 
   return canvas;
-}
-
-function truncateText(ctx, text, maxWidth) {
-  if (ctx.measureText(text).width <= maxWidth) return text;
-  let out = text;
-  while (out.length > 1 && ctx.measureText(`${out}…`).width > maxWidth) {
-    out = out.slice(0, -1);
-  }
-  return `${out}…`;
 }
 
 function roundRect(ctx, x, y, w, h, r) {
