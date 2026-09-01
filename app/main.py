@@ -22,7 +22,7 @@ from config import (
     WEB_DIR,
     apply_change_reasons_text,
     change_reasons_summary,
-    update_change_reasons_from_remote,
+    update_change_reasons,
 )
 from stats import aggregate_logs, date_bounds
 
@@ -53,6 +53,10 @@ class ChangeReasonsManualBody(BaseModel):
     content: str = Field(min_length=2)
 
 
+class ChangeReasonsUpdateBody(BaseModel):
+    source: str = "git"
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index() -> HTMLResponse:
     index_path = WEB_DIR / "index.html"
@@ -78,9 +82,9 @@ async def get_change_reasons() -> dict[str, Any]:
 
 
 @app.post("/api/change-reasons/update")
-def update_change_reasons() -> dict[str, Any]:
+def update_change_reasons_api(body: ChangeReasonsUpdateBody = ChangeReasonsUpdateBody()) -> dict[str, Any]:
     try:
-        return update_change_reasons_from_remote()
+        return update_change_reasons(body.source or "git")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

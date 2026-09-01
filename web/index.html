@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/styles.css?v=10" />
+  <link rel="stylesheet" href="/static/styles.css?v=12" />
 </head>
 <body>
   <div class="atmosphere" aria-hidden="true"></div>
@@ -144,6 +144,32 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=13"></script>
+  <div id="reasonsSourceModal" class="report-modal hidden" role="dialog" aria-modal="true" aria-labelledby="reasonsSourceModalTitle">
+    <div class="report-modal-backdrop" data-close-reasons-source></div>
+    <div class="report-modal-panel reasons-modal-panel">
+      <div class="report-modal-head">
+        <h2 id="reasonsSourceModalTitle">选择自动更新来源</h2>
+        <button type="button" class="btn text" data-close-reasons-source>关闭</button>
+      </div>
+      <div class="report-modal-body reasons-modal-body">
+        <p class="muted">将覆盖本地 <code>change_reasons.json</code>，本地手工修改会丢失。请选择一种来源：</p>
+        <div class="reasons-source-option">
+          <strong>从官网更新（推荐）</strong>
+          <p class="muted">解析客服中心前端 JS 中的官方枚举，文案与网页一致。程序会从流水页自动发现当前 chunk（不依赖固定文件名）。若失败可改用 GitHub 或手动更新。</p>
+          <button type="button" class="btn primary" id="btnUpdateReasonsOfficial">从官网更新</button>
+        </div>
+        <div class="reasons-source-option">
+          <strong>从 GitHub 更新</strong>
+          <p class="muted">下载本仓库维护的 <code>change_reasons.json</code>。国内访问 GitHub 可能超时，失败时可改用官网或手动更新；程序也会尝试镜像。</p>
+          <button type="button" class="btn ghost" id="btnUpdateReasonsGit">从 GitHub 更新</button>
+        </div>
+      </div>
+      <div class="report-modal-actions">
+        <button type="button" class="btn ghost" data-close-reasons-source>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=15"></script>
 </body>
 </html>

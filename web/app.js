@@ -12,8 +12,11 @@ const resultsEl = document.getElementById("results");
 const btnQuery = document.getElementById("btnQuery");
 const btnUpdateReasonsAuto = document.getElementById("btnUpdateReasonsAuto");
 const btnUpdateReasonsManual = document.getElementById("btnUpdateReasonsManual");
+const btnUpdateReasonsOfficial = document.getElementById("btnUpdateReasonsOfficial");
+const btnUpdateReasonsGit = document.getElementById("btnUpdateReasonsGit");
 const btnApplyReasonsManual = document.getElementById("btnApplyReasonsManual");
 const reasonsModal = document.getElementById("reasonsModal");
+const reasonsSourceModal = document.getElementById("reasonsSourceModal");
 const reasonsJsonInput = document.getElementById("reasonsJsonInput");
 const startDateEl = document.getElementById("startDate");
 const endDateEl = document.getElementById("endDate");
@@ -700,6 +703,12 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !reportModal.classList.contains("hidden")) {
     closeReportPreview();
   }
+  if (e.key === "Escape" && !reasonsSourceModal.classList.contains("hidden")) {
+    closeReasonsSourceModal();
+  }
+  if (e.key === "Escape" && !reasonsModal.classList.contains("hidden")) {
+    closeReasonsModal();
+  }
 });
 
 btnSaveReport.addEventListener("click", () => {
@@ -789,26 +798,47 @@ function openReasonsModal() {
   reasonsJsonInput.focus();
 }
 
-btnUpdateReasonsAuto.addEventListener("click", async () => {
-  const ok = window.confirm(
-    "将从 GitHub 仓库自动下载最新 change_reasons.json 并覆盖本地文件。\n\n" +
-      "部分网络环境可能无法访问 GitHub，导致更新失败；若失败请改用「手动更新变动原因码表」。\n\n" +
-      "本地手工修改会被替换，是否继续？"
-  );
-  if (!ok) return;
+function closeReasonsSourceModal() {
+  reasonsSourceModal.classList.add("hidden");
+}
 
+function openReasonsSourceModal() {
+  reasonsSourceModal.classList.remove("hidden");
+}
+
+btnUpdateReasonsAuto.addEventListener("click", () => {
+  openReasonsSourceModal();
+});
+
+async function runReasonsAutoUpdate(source, label) {
   btnUpdateReasonsAuto.disabled = true;
   btnUpdateReasonsManual.disabled = true;
-  queryStatus.textContent = "正在自动更新码表…";
+  btnUpdateReasonsOfficial.disabled = true;
+  btnUpdateReasonsGit.disabled = true;
+  queryStatus.textContent = `正在从${label}更新码表…`;
   try {
-    const data = await api("/api/change-reasons/update", { method: "POST" });
+    const data = await api("/api/change-reasons/update", {
+      method: "POST",
+      body: JSON.stringify({ source }),
+    });
     queryStatus.textContent = data.message || `码表已更新，共 ${data.count || 0} 条`;
+    closeReasonsSourceModal();
   } catch (err) {
-    queryStatus.textContent = `${err.message || "自动更新失败"}（可改用手动更新）`;
+    queryStatus.textContent = `${err.message || "自动更新失败"}（可改用其他来源或手动更新）`;
   } finally {
     btnUpdateReasonsAuto.disabled = false;
     btnUpdateReasonsManual.disabled = false;
+    btnUpdateReasonsOfficial.disabled = false;
+    btnUpdateReasonsGit.disabled = false;
   }
+}
+
+btnUpdateReasonsOfficial.addEventListener("click", () => {
+  runReasonsAutoUpdate("official", "官网");
+});
+
+btnUpdateReasonsGit.addEventListener("click", () => {
+  runReasonsAutoUpdate("git", "GitHub");
 });
 
 btnUpdateReasonsManual.addEventListener("click", () => {
@@ -840,4 +870,8 @@ btnApplyReasonsManual.addEventListener("click", async () => {
 
 reasonsModal.querySelectorAll("[data-close-reasons]").forEach((el) => {
   el.addEventListener("click", closeReasonsModal);
+});
+
+reasonsSourceModal.querySelectorAll("[data-close-reasons-source]").forEach((el) => {
+  el.addEventListener("click", closeReasonsSourceModal);
 });
